@@ -10,12 +10,13 @@ from scipy import ndimage
 #from tensorflow.python.ops import io_ops
 
 
-def shuffle_data(labels, fns, rnd_seed=None):
+def shuffle_data(labels, fns, idx, rnd_seed=None):
     np.random.seed(rnd_seed)
     p = np.random.permutation(len(fns))
     fns_shuffle = [fns[i] for i in p]
     labels_shuffle = [labels[i] for i in p]
-    return labels_shuffle, fns_shuffle
+    idx_shuffle = [idx[i] for i in p]
+    return labels_shuffle, fns_shuffle, idx_shuffle
 
 def energy_aad(S, th=0.985):
     """
@@ -39,7 +40,7 @@ class DataGenerator():
         self.dual_output = dual_output
         self.batch_size = batch_size
         self.data_list = data_list
-        self.train_labels, self.train_fns, self.test_labels, self.test_fns = self.train_valid_split()
+        self.train_labels, self.train_fns, self.train_idx, self.test_labels, self.test_fns, self.test_idx = self.train_valid_split()
 
     def gen_spectrogram(self, filenames):
         x_data = []
@@ -74,18 +75,18 @@ class DataGenerator():
 
     def train_valid_split(self):
         
-        fns, labels = self.data_list
-        s_labels, s_fns = shuffle_data(labels, fns, rnd_seed=None)
+        fns, labels, idx = self.data_list
+        s_labels, s_fns, s_idx = shuffle_data(labels, fns, idx, rnd_seed=None)
         train_size = int(len(s_labels) * 0.7)
         
-        return s_labels[0:train_size], s_fns[0:train_size], s_labels[train_size::], s_fns[train_size::]
+        return s_labels[0:train_size], s_fns[0:train_size], s_idx[0:train_size], s_labels[train_size::], s_fns[train_size::], s_idx[train_size::]
     
     def shuffle_data_by_partition(self, partition):
 
         if partition == 'train':
-            self.train_labels, self.train_fns = shuffle_data(self.train_labels, self.train_fns)
+            self.train_labels, self.train_fns, self.train_idx = shuffle_data(self.train_labels, self.train_fns, self.train_idx)
         elif partition == 'test':
-            self.test_labels, self.test_fns = shuffle_data(self.test_labels, self.test_fns)
+            self.test_labels, self.test_fns, self.test_idx = shuffle_data(self.test_labels, self.test_fns, self.test_idx)
     
     def get_next(self, partition):
 
@@ -99,7 +100,6 @@ class DataGenerator():
             labels = self.test_labels
 
         strong_labels = []
-
 
         X_labels = labels[cur_index: cur_index+self.batch_size]
         filenames = audio_files[cur_index: cur_index+self.batch_size]
@@ -151,9 +151,9 @@ class DataGenerator():
             features = self.gen_spectrogram(self.test_fns)
         elif self.mode == 2:
             features = self.load_embeddings(self.test_fns)
-        texts = np.argmax(self.test_labels, axis=1)
-
-        return features, texts
+        labels = np.argmax(self.test_labels, axis=1)
+        idx = self.test_idx
+        return features, labels, idx
    
     def rnd_one_sample(self):
         rnd = np.random.choice(len(self.test_labels), 1)[0]

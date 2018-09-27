@@ -30,15 +30,15 @@ import pandas as pd
 classes_num = 5
 dropout_rate = 0.25
 batch_size = 64
-n_epoch = 50
+n_epoch = 1
 dual_output = True
 mode = 1
 audio_path = '/home/tianxiangchen1/cssvp/Development/'
 
 
-df = pd.read_csv('Logsheet_Development.csv')
+df = pd.read_csv('data.csv')
 df['File'] = audio_path + df['Category'] + '/' + df['File']
-labels, files = df.Category.values, df.File.values
+idx, labels, files = df.index.values, df.Category.values, df.File.values
 
 
 
@@ -52,7 +52,7 @@ y_int = y_int.reshape(len(y_int), 1)
 y_one_hot = enc.fit_transform(y_int)
 
 
-data_list = [files, y_one_hot]
+data_list = [files, y_one_hot, idx]
 data_gen = DataGenerator(batch_size=batch_size, dual_output=dual_output, mode=mode, data_list=data_list)
 
 
@@ -77,12 +77,16 @@ model.fit_generator(generator=data_gen.next_train(),
                     validation_data=data_gen.next_test(), 
                     validation_steps=validation_step)
 
+model.save('models/base_line_model.h5')
 
-X_test, y_true = data_gen.get_test()
+X_test, y_true, test_idx = data_gen.get_test()
 
 
 y_prob = model.predict(X_test)[0]
 y_pred = np.argmax(y_prob, axis=1)
+category_name = list(label_enc.classes_)
+print(classification_report(y_true, y_pred, target_names=category_name))
+from sklearn.metrics import confusion_matrix
 
-print(classification_report(y_true, y_pred))
+print(confusion_matrix(y_true, y_pred))
 

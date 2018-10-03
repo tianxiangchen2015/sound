@@ -30,7 +30,7 @@ import pandas as pd
 classes_num = 5
 dropout_rate = 0.25
 batch_size = 32
-n_epoch = 50
+n_epoch = 49
 dual_output = True
 mode = 1
 audio_path = '/home/tianxiangchen1/cssvp/Development/'
@@ -94,7 +94,7 @@ model.fit_generator(generator=data_gen.next_train(),
 
 model.save('models/base_line_model.h5')
 
-X_test, y_true, test_idx = data_gen.get_test()
+X_test, y_true, y_event, test_idx = data_gen.get_test()
 
 test_idx = np.array(test_idx)
 if dual_output:

@@ -150,9 +150,9 @@ class DataGenerator():
             features = self.gen_spectrogram(list(zip(*self.test))[3])
         elif self.mode == 2:
             features = self.load_embeddings(list(zip(*self.test))[3])
-        labels = np.argmax(list(zip(self.test))[1], axis=1)
-        events = np.argmax(list(zip(self.test))[2], axis=1)
-        idx = zip(*self.test[0])
+        labels = np.argmax(list(zip(*self.test))[1], axis=1)
+        events = np.argmax(list(zip(*self.test))[2], axis=1)
+        idx = list(zip(*self.test))[0]
         return features, labels, events, idx
    
     def rnd_one_sample(self):

@@ -38,21 +38,35 @@ audio_path = '/home/tianxiangchen1/cssvp/Development/'
 
 df = pd.read_csv('data.csv')
 df['File'] = audio_path + df['Category'] + '/' + df['File']
-idx, labels, files = df.index.values, df.Category.values, df.File.values
+idx, labels, events, files = df.index.values, df.Category.values, df.Event.values, df.File.values
 
 
 
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
-
+# Encoding main task
 label_enc = LabelEncoder()
 enc = OneHotEncoder(sparse=False)
 y_int = label_enc.fit_transform(labels)
 y_int = y_int.reshape(len(y_int), 1)
 y_one_hot = enc.fit_transform(y_int)
 
+# Encoding subtask
+label_enc_2 = LabelEncoder()
+enc_2 = OneHotEncoder(sparse=False)
+y_event_int = label_enc_2.fit_transform(events)
+y_event_int = y_event_int.reshape(len(y_event_int), 1)
+y_event_one_hot = enc_2.fit_transform(y_event_int)
 
-data_list = [files, y_one_hot, idx]
+# Preparing train and test data
+data = zip(idx, y_one_hot, y_event_one_hot, files)
+
+from sklearn.model_selection import ShuffleSplit
+sss = ShuffleSplit(n_splits=1, test_size=0.3, random_state=0)
+for train_index, test_index in sss.split(idx, y_event_int):
+    train_data, test_data = [data[i] for i in train_index], [data[i] for i in test_index]
+
+data_list = [train_data, test_data]
 data_gen = DataGenerator(batch_size=batch_size, dual_output=dual_output, mode=mode, data_list=data_list)
 
 
@@ -60,7 +74,6 @@ num_train, num_test = data_gen.get_train_test_num()
 print(num_train, num_test)
 step_per_epoch = num_train // batch_size
 validation_step = num_test // batch_size
-
 
 l, Sxx = data_gen.rnd_one_sample()
 image_shape = Sxx.shape

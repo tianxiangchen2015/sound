@@ -11,13 +11,11 @@ from scipy import ndimage
 
 TIME_STEP=249
 
-def shuffle_data(labels, fns, idx, rnd_seed=None):
+def shuffle_data(fns, rnd_seed=None):
     np.random.seed(rnd_seed)
     p = np.random.permutation(len(fns))
     fns_shuffle = [fns[i] for i in p]
-    labels_shuffle = [labels[i] for i in p]
-    idx_shuffle = [idx[i] for i in p]
-    return labels_shuffle, fns_shuffle, idx_shuffle
+    return fns_shuffle
 
 def energy_aad(S, th=0.985):
     """
@@ -40,8 +38,7 @@ class DataGenerator():
         self.mode = mode
         self.dual_output = dual_output
         self.batch_size = batch_size
-        self.data_list = data_list
-        self.train_labels, self.train_fns, self.train_idx, self.test_labels, self.test_fns, self.test_idx = self.train_valid_split()
+        self.train, self.test = data_list
 
     def gen_spectrogram(self, filenames):
         x_data = []
@@ -74,35 +71,31 @@ class DataGenerator():
 
         return np.vstack(x_data)
 
-    def train_valid_split(self):
-        
-        fns, labels, idx = self.data_list
-        s_labels, s_fns, s_idx = shuffle_data(labels, fns, idx, rnd_seed=0)
-        train_size = int(len(s_labels) * 0.7)
-        
-        return s_labels[0:train_size], s_fns[0:train_size], s_idx[0:train_size], s_labels[train_size::], s_fns[train_size::], s_idx[train_size::]
-    
     def shuffle_data_by_partition(self, partition):
 
         if partition == 'train':
-            self.train_labels, self.train_fns, self.train_idx = shuffle_data(self.train_labels, self.train_fns, self.train_idx)
+            self.train = shuffle_data(self.train)
+
         elif partition == 'test':
-            self.test_labels, self.test_fns, self.test_idx = shuffle_data(self.test_labels, self.test_fns, self.test_idx)
-    
+            self.test = shuffle_data(self.test)
+
     def get_next(self, partition):
 
         if partition=='train':
             cur_index = self.train_index
-            audio_files = self.train_fns
-            labels = self.train_labels
+            audio_files = zip(*self.train)[3]
+            labels = zip(*self.train)[1]
+            events = zip(*self.train)[2]
         elif partition=='test':
             cur_index = self.test_index
-            audio_files = self.test_fns
-            labels = self.test_labels
+            audio_files = zip(*self.test[3])
+            labels = zip(*self.test[1])
+            events = zip(*self.test[2])
 
         strong_labels = []
 
         X_labels = labels[cur_index: cur_index+self.batch_size]
+        X_events = events[cur_index: cur_index+self.batch_size]
         filenames = audio_files[cur_index: cur_index+self.batch_size]
         if self.mode == 1:
             X_data = self.gen_spectrogram(filenames)
@@ -126,7 +119,7 @@ class DataGenerator():
         '''
         inputs = X_data
         outputs_weak = np.vstack(X_labels)
-        outputs_strong = np.array(strong_labels)
+        outputs_strong = np.vstack(X_events)
 
         if self.dual_output:
             return inputs, [outputs_weak, outputs_strong]
@@ -137,7 +130,7 @@ class DataGenerator():
         while True:
             ret = self.get_next('train')
             self.train_index += self.batch_size
-            if self.train_index > len(self.train_labels) - self.batch_size:
+            if self.train_index > len(self.train) - self.batch_size:
                 self.train_index = 0
                 self.shuffle_data_by_partition('train')
             yield ret
@@ -146,7 +139,7 @@ class DataGenerator():
         while True:
             ret = self.get_next('test')
             self.test_index += self.batch_size
-            if self.test_index > len(self.test_labels) - self.batch_size:
+            if self.test > len(self.test) - self.batch_size:
                 self.test_index = 0
                 self.shuffle_data_by_partition('test')
             yield ret
@@ -154,23 +147,24 @@ class DataGenerator():
     def get_test(self):
         self.shuffle_data_by_partition('test')
         if self.mode == 1:
-            features = self.gen_spectrogram(self.test_fns)
+            features = self.gen_spectrogram(zip(*self.test[3]))
         elif self.mode == 2:
-            features = self.load_embeddings(self.test_fns)
-        labels = np.argmax(self.test_labels, axis=1)
-        idx = self.test_idx
-        return features, labels, idx
+            features = self.load_embeddings(zip(*self.test[3]))
+        labels = np.argmax(self.test[:,1], axis=1)
+        events = np.argmax(self.test[:,2], axis=1)
+        idx = zip(*self.test[0])
+        return features, labels, events, idx
    
     def rnd_one_sample(self):
-        rnd = np.random.choice(len(self.test_labels), 1)[0]
+        rnd = np.random.choice(10, 1)[0]
         if self.mode == 1:
-            Sxx = self.gen_spectrogram([self.test_fns[rnd]])
+            Sxx = self.gen_spectrogram([self.test[rnd][3]])
         elif self.mode == 2:
-            Sxx = self.load_embeddings([self.test_fns[rnd]])
+            Sxx = self.load_embeddings([self.test[rnd][3]])
 
-        return self.test_labels, Sxx
+        return self.test[rnd], Sxx
 
     def get_train_test_num(self):
-        return len(self.train_labels), len(self.test_labels)
+        return len(self.train), len(self.test)
 
 

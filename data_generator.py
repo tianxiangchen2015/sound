@@ -9,6 +9,7 @@ from scipy import ndimage
 #from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio
 #from tensorflow.python.ops import io_ops
 
+TIME_STEP=249
 
 def shuffle_data(labels, fns, idx, rnd_seed=None):
     np.random.seed(rnd_seed)
@@ -76,7 +77,7 @@ class DataGenerator():
     def train_valid_split(self):
         
         fns, labels, idx = self.data_list
-        s_labels, s_fns, s_idx = shuffle_data(labels, fns, idx, rnd_seed=None)
+        s_labels, s_fns, s_idx = shuffle_data(labels, fns, idx, rnd_seed=0)
         train_size = int(len(s_labels) * 0.7)
         
         return s_labels[0:train_size], s_fns[0:train_size], s_idx[0:train_size], s_labels[train_size::], s_fns[train_size::], s_idx[train_size::]
@@ -107,7 +108,7 @@ class DataGenerator():
             X_data = self.gen_spectrogram(filenames)
         elif self.mode == 2:
             X_data = self.load_embeddings(filenames)
-
+        '''
         for S, label in zip(X_data, X_labels):
             energy_filter = energy_aad(S[:, :, 0])
             l = np.zeros((249, 6))
@@ -117,7 +118,12 @@ class DataGenerator():
                 else:
                     l[i][0:5] = label[0::]
             strong_labels.append(l)
-
+        '''
+        '''
+        for i in range(cur_index, cur_index + self.batch_size):
+            l = np.array([labels[i], ] * TIME_STEP)
+            strong_labels.append(l)
+        '''
         inputs = X_data
         outputs_weak = np.vstack(X_labels)
         outputs_strong = np.array(strong_labels)

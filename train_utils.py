@@ -144,17 +144,16 @@ def base_model_embedding(image_shape, classes_num, dropout_rate):
 
 def base_model_1(image_shape, classes_num, dropout_rate):
     input_layer = Input(shape=(image_shape[1], image_shape[2], image_shape[3]))
-    cnn = Conv2D(128, (3, 3), padding='valid')(input_layer)
+    cnn = Conv2D(128, (3, 3), padding='same')(input_layer)
     cnn = Activation('relu')(cnn)
-    #cnn = MaxPooling2D((1, 4))(cnn)
-    cnn = Conv2D(128, (3, 3), padding='valid')(cnn)
+    cnn = MaxPooling2D((1, 4))(cnn)
+    cnn = Conv2D(128, (3, 3), padding='same')(cnn)
     cnn = Activation('relu')(cnn)
-    #cnn = MaxPooling2D((1, 4))(cnn)
-    cnn = Conv2D(128, (3, 3), padding='valid')(cnn)
+    cnn = MaxPooling2D((1, 5))(cnn)
+    cnn = Conv2D(128, (3, 3), padding='same')(cnn)
     cnn = Activation('relu')(cnn)
-    cnn = Conv2D(10, (493, 34), padding='valid')(cnn)
-    cnn = Activation('relu')(cnn)
-    cnn = Reshape((1,10))(cnn)
+    cnn = MaxPooling2D((1, 2))(cnn)
+    cnn = Reshape((TIME_STEPS, 128))(cnn)
     dense_a = Dense(128, activation='relu')(cnn)
     #dense_a = Lambda(global_average_pooling,output_shape=global_average_pooling_shape)(cnn)
     dense_b = Dense(128, activation='relu')(dense_a)
@@ -317,9 +316,9 @@ def base_model_5(image_shape, classes_num, dropout_rate):
     bi_gru = Bidirectional(GRU(128, recurrent_dropout=dropout_rate,return_sequences=False))(attention_mul)
     output_layer = Dense(classes_num, activation='softmax')(bi_gru)
 
-    dense_a = TimeDistributed(Dense(classes_num+1, activation='relu'))(time_distribute)
+    dense_a = TimeDistributed(Dense(classes_num, activation='relu'))(time_distribute)
     dense_a = Dropout(dropout_rate)(dense_a)
-    strong_out = TimeDistributed(Dense(classes_num+1, activation='softmax'))(dense_a)
+    strong_out = TimeDistributed(Dense(classes_num, activation='softmax'))(dense_a)
 
     model = Model(inputs=input_layer, outputs=[output_layer, strong_out])
     return model, 'base_model_5'

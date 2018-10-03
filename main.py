@@ -29,9 +29,9 @@ import pandas as pd
 
 classes_num = 5
 dropout_rate = 0.25
-batch_size = 64
-n_epoch = 1
-dual_output = True
+batch_size = 32
+n_epoch = 40
+dual_output = False
 mode = 1
 audio_path = '/home/tianxiangchen1/cssvp/Development/'
 
@@ -66,12 +66,14 @@ l, Sxx = data_gen.rnd_one_sample()
 image_shape = Sxx.shape
 
 
-model, model_name = base_model_5(image_shape, classes_num, dropout_rate)
+model, model_name = base_model_1(image_shape, classes_num, dropout_rate)
 print(model.summary())
 
-
-model.compile(optimizer='Adam', loss=[losses.categorical_crossentropy, losses.categorical_crossentropy], loss_weights= [1, 0.5], metrics=[metrics.categorical_accuracy])
-
+if dual_output:
+    model.compile(optimizer='Adam', loss=[losses.categorical_crossentropy, losses.categorical_crossentropy], loss_weights= [1, 0.2], metrics=[metrics.categorical_accuracy])
+else:
+    model.compile(optimizer='Adam', loss=losses.categorical_crossentropy, metrics=[metrics.categorical_accuracy])
+    
 model.fit_generator(generator=data_gen.next_train(), 
                     steps_per_epoch=step_per_epoch, epochs=n_epoch,
                     validation_data=data_gen.next_test(), 
@@ -81,12 +83,31 @@ model.save('models/base_line_model.h5')
 
 X_test, y_true, test_idx = data_gen.get_test()
 
+test_idx = np.array(test_idx)
+if dual_output:
+    y_prob = model.predict(X_test)[0]
+else:
+    y_prob = model.predict(X_test)
 
-y_prob = model.predict(X_test)[0]
 y_pred = np.argmax(y_prob, axis=1)
+
 category_name = list(label_enc.classes_)
 print(classification_report(y_true, y_pred, target_names=category_name))
 from sklearn.metrics import confusion_matrix
 
 print(confusion_matrix(y_true, y_pred))
+
+#wrong_pred = test_idx[np.where(y_true != y_pred)]
+
+#df_miss = df[df.index.isin(wrong_pred)]
+#df_miss.to_csv('missed_samples.csv', index=None)
+
+y_true_labels = label_enc.inverse_transform(y_true)
+y_pred_labels = label_enc.inverse_transform(y_pred)
+
+df_test = df[df.index.isin(test_idx)] 
+df_test['sort_cat'] = pd.Categorical(df_test['index'], categories=test_idx, ordered=True)
+df_test.sort_values('sort_cat', inplace=True)
+df_test['pred'] = list(y_pred_labels)
+df_test.to_csv('results/all_test_predict_%s.csv' % model_name, index=None)
 

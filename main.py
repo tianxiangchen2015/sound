@@ -30,8 +30,8 @@ import pandas as pd
 classes_num = 5
 dropout_rate = 0.25
 batch_size = 32
-n_epoch = 40
-dual_output = False
+n_epoch = 50
+dual_output = True
 mode = 1
 audio_path = '/home/tianxiangchen1/cssvp/Development/'
 
@@ -59,7 +59,7 @@ y_event_int = y_event_int.reshape(len(y_event_int), 1)
 y_event_one_hot = enc_2.fit_transform(y_event_int)
 
 # Preparing train and test data
-data = zip(idx, y_one_hot, y_event_one_hot, files)
+data = list(zip(idx, y_one_hot, y_event_one_hot, files))
 
 from sklearn.model_selection import ShuffleSplit
 sss = ShuffleSplit(n_splits=1, test_size=0.3, random_state=0)
@@ -79,11 +79,11 @@ l, Sxx = data_gen.rnd_one_sample()
 image_shape = Sxx.shape
 
 
-model, model_name = base_model_1(image_shape, classes_num, dropout_rate)
+model, model_name = base_model_2(image_shape, classes_num, y_event_one_hot[0].shape[0],dropout_rate)
 print(model.summary())
 
 if dual_output:
-    model.compile(optimizer='Adam', loss=[losses.categorical_crossentropy, losses.categorical_crossentropy], loss_weights= [1, 0.2], metrics=[metrics.categorical_accuracy])
+    model.compile(optimizer='Adam', loss=[losses.categorical_crossentropy, losses.categorical_crossentropy], loss_weights= [1, 1], metrics=[metrics.categorical_accuracy])
 else:
     model.compile(optimizer='Adam', loss=losses.categorical_crossentropy, metrics=[metrics.categorical_accuracy])
     

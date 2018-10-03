@@ -83,14 +83,14 @@ class DataGenerator():
 
         if partition=='train':
             cur_index = self.train_index
-            audio_files = zip(*self.train)[3]
-            labels = zip(*self.train)[1]
-            events = zip(*self.train)[2]
+            audio_files = list(zip(*self.train))[3]
+            labels = list(zip(*self.train))[1]
+            events = list(zip(*self.train))[2]
         elif partition=='test':
             cur_index = self.test_index
-            audio_files = zip(*self.test[3])
-            labels = zip(*self.test[1])
-            events = zip(*self.test[2])
+            audio_files = list(zip(*self.test))[3]
+            labels = list(zip(*self.test))[1]
+            events = list(zip(*self.test))[2]
 
         strong_labels = []
 
@@ -139,7 +139,7 @@ class DataGenerator():
         while True:
             ret = self.get_next('test')
             self.test_index += self.batch_size
-            if self.test > len(self.test) - self.batch_size:
+            if self.test_index > len(self.test) - self.batch_size:
                 self.test_index = 0
                 self.shuffle_data_by_partition('test')
             yield ret
@@ -147,11 +147,11 @@ class DataGenerator():
     def get_test(self):
         self.shuffle_data_by_partition('test')
         if self.mode == 1:
-            features = self.gen_spectrogram(zip(*self.test[3]))
+            features = self.gen_spectrogram(list(zip(*self.test))[3])
         elif self.mode == 2:
-            features = self.load_embeddings(zip(*self.test[3]))
-        labels = np.argmax(self.test[:,1], axis=1)
-        events = np.argmax(self.test[:,2], axis=1)
+            features = self.load_embeddings(list(zip(*self.test))[3])
+        labels = np.argmax(list(zip(self.test))[1], axis=1)
+        events = np.argmax(list(zip(self.test))[2], axis=1)
         idx = zip(*self.test[0])
         return features, labels, events, idx
    

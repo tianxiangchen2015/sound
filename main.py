@@ -30,14 +30,14 @@ import pandas as pd
 classes_num = 5
 dropout_rate = 0.25
 batch_size = 32
-n_epoch = 49
+n_epoch = 32
 dual_output = True
-mode = 1
-audio_path = '/home/tianxiangchen1/cssvp/Development/'
+mode = 3
+#audio_path = '/home/tianxiangchen1/cssvp/Development/16k/'
 
 
 df = pd.read_csv('data.csv')
-df['File'] = audio_path + df['Category'] + '/' + df['File']
+df['File'] =df['Category'] + '/' + df['File']
 idx, labels, events, files = df.index.values, df.Category.values, df.Event.values, df.File.values
 
 
@@ -62,7 +62,7 @@ y_event_one_hot = enc_2.fit_transform(y_event_int)
 data = list(zip(idx, y_one_hot, y_event_one_hot, files))
 
 from sklearn.model_selection import ShuffleSplit
-sss = ShuffleSplit(n_splits=1, test_size=0.3, random_state=0)
+sss = ShuffleSplit(n_splits=1, test_size=0.4, random_state=0)
 for train_index, test_index in sss.split(idx, y_event_int):
     train_data, test_data = [data[i] for i in train_index], [data[i] for i in test_index]
 
@@ -75,11 +75,16 @@ print(num_train, num_test)
 step_per_epoch = num_train // batch_size
 validation_step = num_test // batch_size
 
-l, Sxx = data_gen.rnd_one_sample()
-image_shape = Sxx.shape
+#l, Sxx = data_gen.rnd_one_sample()
+image_shape = (1,480,64,1)
+embeding_shape = (1, 5, 128)
+print(image_shape)
 
+if dual_output:
+    model, model_name = base_model_7(image_shape, embeding_shape, classes_num, y_event_one_hot[0].shape[0],dropout_rate)
+else:
+    model, model_name = base_model_8(image_shape, classes_num, dropout_rate)
 
-model, model_name = base_model_2(image_shape, classes_num, y_event_one_hot[0].shape[0],dropout_rate)
 print(model.summary())
 
 if dual_output:
@@ -92,7 +97,7 @@ model.fit_generator(generator=data_gen.next_train(),
                     validation_data=data_gen.next_test(), 
                     validation_steps=validation_step)
 
-model.save('models/base_line_model.h5')
+model.save('models/base_line_model_6.h5')
 
 X_test, y_true, y_event, test_idx = data_gen.get_test()
 
@@ -104,11 +109,21 @@ else:
 
 y_pred = np.argmax(y_prob, axis=1)
 
+import sys
+
+orig_stdout = sys.stdout
+
+f = open('output.txt', 'w')
+sys.stdout = f
+
 category_name = list(label_enc.classes_)
 print(classification_report(y_true, y_pred, target_names=category_name))
 from sklearn.metrics import confusion_matrix
 
 print(confusion_matrix(y_true, y_pred))
+
+sys.stdout = orig_stdout
+f.close()
 
 #wrong_pred = test_idx[np.where(y_true != y_pred)]
 

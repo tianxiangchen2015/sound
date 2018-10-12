@@ -459,11 +459,108 @@ def base_model_9(image_shape, classes_num, classes_num_2, dropout_rate):
     cnn_2 = MaxPooling2D((2, 2), strides=(2, 2), name='last_cnn_2')(cnn_2)
     
     merged_vectors = concatenate([x, cnn_2], axis=1)
+    merged_vectors = Reshape((240,512))(merged_vectors)
     
-    flat = GlobalMaxPooling2D()(merged_vectors)
-    # Embedding Path
-    output_layer = Dense(classes_num, activation='softmax')(flat)
-    output_event = Dense(classes_num_2, activation='softmax')(flat)
+    cla = Dense(256, activation='linear')(merged_vectors)
+    att = Dense(256, activation='softmax')(merged_vectors)
+    dense_b = Lambda(attention_pooling, output_shape=pooling_shape)([cla, att])
+    dense_b = BatchNormalization()(dense_b)
+    dense_b = Activation(activation='relu')(dense_b)
+    dense_b = Dropout(dropout_rate)(dense_b)
+    b1 = Dense(128)(dense_b)
+    b1 = BatchNormalization()(b1)
+    b1 = Activation(activation='relu')(b1)
+    b1 = Dropout(dropout_rate)(b1)
+    output_layer = Dense(classes_num, activation='softmax')(b1)
+    output_event = Dense(classes_num_2, activation='softmax')(b1)
     model = Model(inputs=[sound_model.input, input_layer_2], outputs=[output_layer, output_event])
 
-    return model, 'base_model_8'
+    return model, 'base_model_9'
+
+
+def base_model_10(image_shape, classes_num, classes_num_2, dropout_rate):
+    input_layer = Input(shape=(image_shape[1], image_shape[2], image_shape[3]))
+    input_layer_2 = Input(shape=(image_shape[1], image_shape[2], image_shape[3]))
+
+    cnn = Conv2D(64, (3, 3), padding='same', activation='relu', trainable=False)(input_layer)
+    cnn = MaxPooling2D((2, 2), strides=(2, 2), name='cnn_1')(cnn)
+
+    cnn = Conv2D(128, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = MaxPooling2D((2, 2), strides=(2, 2), name='cnn_2')(cnn)
+
+    cnn = Conv2D(256, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = Conv2D(256, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = MaxPooling2D((2, 2), strides=(2, 2), name='cnn_3')(cnn)
+
+    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = MaxPooling2D((2, 2), strides=(2, 2), name='last_cnn')(cnn)
+
+    sound_model = Model(inputs=input_layer, outputs=cnn)
+    sound_model.load_weights('VGGish/vggish_audioset_weights_without_fc2.h5')
+    x_1 = sound_model.get_layer(name='cnn_1').output
+    x_2 = sound_model.get_layer(name='cnn_2').output
+    x_3 = sound_model.get_layer(name='cnn_3').output
+    x_4 = sound_model.get_layer(name='last_cnn').output
+
+    cnn_2 = Conv2D(64, (3, 3), padding='same', activation='relu')(input_layer_2)
+    cnn_2 = MaxPooling2D((2, 2), strides=(2, 2))(cnn_2)
+   
+    #adapter_1 = Conv2D(64, (1, 1), padding='same', activation='relu')(x_1)
+    #cnn_2 = concatenate([cnn_2, adapter_1], axis=2)
+    cnn_2 = Conv2D(128, (3, 3), padding='same', activation='relu')(cnn_2)
+    cnn_2 = MaxPooling2D((2, 2), strides=(2, 2))(cnn_2)
+    
+    #adapter_2 = Conv2D(128, (1, 1), padding='same', activation='relu')(x_2)
+    #cnn_2 = concatenate([cnn_2, adapter_2], axis=2)
+    cnn_2 = Conv2D(256, (3, 3), padding='same', activation='relu')(cnn_2)
+    cnn_2 = Conv2D(256, (3, 3), padding='same', activation='relu')(cnn_2)
+    cnn_2 = MaxPooling2D((2, 2), strides=(2, 2))(cnn_2)
+
+    #adapter_3 = Conv2D(256, (1, 1), padding='same', activation='relu')(x_3)
+    #cnn_2 = concatenate([cnn_2, adapter_3], axis=2)
+    cnn_2 = Conv2D(512, (3, 3), padding='same', activation='relu')(cnn_2)
+    cnn_2 = Conv2D(512, (3, 3), padding='same', activation='relu')(cnn_2)
+    cnn_2 = MaxPooling2D((2, 2), strides=(2, 2), name='last_cnn_2')(cnn_2)
+    
+    adapter_4 = Conv2D(512, (1, 1), padding='same', activation='relu')(x_4)
+
+    merged_vectors = concatenate([cnn_2, adapter_4], axis=2)
+    cnn_3 = Conv2D(512, (3, 3), padding='same')(merged_vectors)
+    #cnn_3 = BatchNormalization(axis=-1)(cnn_3)
+    cnn_3 = Activation('relu')(cnn_3)
+    cnn_3 = Conv2D(512, (3, 3), padding='same')(cnn_3)
+    #cnn_3 = BatchNormalization(axis=-1)(cnn_3)
+    cnn_3 = Activation('relu')(cnn_3)
+    cnn_3 = MaxPooling2D((1, 2), strides=(2, 2), name='last_cnn_3')(cnn_3)
+
+
+    #model = Model(inputs=[sound_model.input, input_layer_2], outputs=cnn_3)
+    res_cnn_3 = Reshape((15*4,512))(cnn_3)
+    res_cnn_2 = Reshape((30*4,512))(x_4)
+
+    cla = Dense(256, activation='linear')(res_cnn_3)
+    att = Dense(256, activation='softmax')(res_cnn_3)
+    dense_a = Lambda(attention_pooling, output_shape=pooling_shape)([cla, att])
+    dense_a = BatchNormalization()(dense_a)
+    dense_a = Activation(activation='relu')(dense_a)
+    dense_a = Dropout(dropout_rate)(dense_a)
+
+    
+    cla_2 = Dense(256, activation='linear')(res_cnn_2)
+    att_2 = Dense(256, activation='softmax')(res_cnn_2)
+    dense_b = Lambda(attention_pooling, output_shape=pooling_shape)([cla_2, att_2])
+    dense_b = BatchNormalization()(dense_b)
+    dense_b = Activation(activation='relu')(dense_b)
+    dense_b = Dropout(dropout_rate)(dense_b)
+
+    merge_out = concatenate([dense_a, dense_b], axis=-1)
+
+    b1 = Dense(128)(merge_out)
+    b1 = BatchNormalization()(b1)
+    b1 = Activation(activation='relu')(b1)
+    b1 = Dropout(dropout_rate)(b1)
+    output_layer = Dense(classes_num, activation='softmax')(b1)
+    output_event = Dense(classes_num_2, activation='softmax')(b1)
+    model = Model(inputs=[sound_model.input, input_layer_2], outputs=[output_layer, output_event])
+    return model, 'base_model_10'

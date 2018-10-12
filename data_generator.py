@@ -118,7 +118,7 @@ class DataGenerator():
             if self.mode == 3:
                 return [inputs, inputs_2], [outputs_weak, outputs_strong]
             else:
-                return inputs, [outputs_weak, outputs_strong]
+                return [inputs, inputs], [outputs_weak, outputs_strong]
         else:
             if self.mode == 3:
                 return [inputs, inputs_2], [outputs_weak, outputs_strong]
@@ -157,7 +157,7 @@ class DataGenerator():
             embeddings = self.load_embeddings(list(zip(*self.test))[3])
             return [features, embeddings], labels, events, idx
 
-        return features, labels, events, idx
+        return [features, features], labels, events, idx
    
     def rnd_one_sample(self):
         rnd = np.random.choice(10, 1)[0]

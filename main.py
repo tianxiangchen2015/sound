@@ -28,11 +28,11 @@ import pandas as pd
 
 
 classes_num = 5
-dropout_rate = 0.25
+dropout_rate = 0.3
 batch_size = 32
-n_epoch = 32
+n_epoch = 40
 dual_output = True
-mode = 3
+mode = 1
 #audio_path = '/home/tianxiangchen1/cssvp/Development/16k/'
 
 
@@ -62,7 +62,7 @@ y_event_one_hot = enc_2.fit_transform(y_event_int)
 data = list(zip(idx, y_one_hot, y_event_one_hot, files))
 
 from sklearn.model_selection import ShuffleSplit
-sss = ShuffleSplit(n_splits=1, test_size=0.4, random_state=0)
+sss = ShuffleSplit(n_splits=1, test_size=0.3, random_state=0)
 for train_index, test_index in sss.split(idx, y_event_int):
     train_data, test_data = [data[i] for i in train_index], [data[i] for i in test_index]
 
@@ -81,12 +81,12 @@ embeding_shape = (1, 5, 128)
 print(image_shape)
 
 if dual_output:
-    model, model_name = base_model_7(image_shape, embeding_shape, classes_num, y_event_one_hot[0].shape[0],dropout_rate)
+    model, model_name = base_model_10(image_shape, classes_num, y_event_one_hot[0].shape[0],dropout_rate)
 else:
-    model, model_name = base_model_8(image_shape, classes_num, dropout_rate)
+    model, model_name = base_model_8(image_shape, classes_num, y_event_one_hot[0].shape[0],dropout_rate)
 
 print(model.summary())
-
+print(model_name)
 if dual_output:
     model.compile(optimizer='Adam', loss=[losses.categorical_crossentropy, losses.categorical_crossentropy], loss_weights= [1, 1], metrics=[metrics.categorical_accuracy])
 else:
@@ -97,7 +97,7 @@ model.fit_generator(generator=data_gen.next_train(),
                     validation_data=data_gen.next_test(), 
                     validation_steps=validation_step)
 
-model.save('models/base_line_model_6.h5')
+model.save('models/{0}.h5'.format(model_name))
 
 X_test, y_true, y_event, test_idx = data_gen.get_test()
 
@@ -113,7 +113,7 @@ import sys
 
 orig_stdout = sys.stdout
 
-f = open('output.txt', 'w')
+f = open('output_{0}.txt'.format(model_name), 'w')
 sys.stdout = f
 
 category_name = list(label_enc.classes_)
@@ -137,5 +137,5 @@ df_test = df[df.index.isin(test_idx)]
 df_test['sort_cat'] = pd.Categorical(df_test['index'], categories=test_idx, ordered=True)
 df_test.sort_values('sort_cat', inplace=True)
 df_test['pred'] = list(y_pred_labels)
-df_test.to_csv('results/all_test_predict_%s.csv' % model_name, index=None)
+df_test.to_csv('results/{0}/all_test_predict_{1}.csv'.format(model_name, model_name), index=None)
 

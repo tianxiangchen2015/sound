@@ -41,30 +41,61 @@ class DataGenerator():
         self.dual_output = dual_output
         self.batch_size = batch_size
         self.train, self.test = data_list
+        
+    def read_audio(self, fn):
+        y, sr = librosa.load(fn, sr=16000)
+        # trim silence
+        if 0 < len(y): # workaround: 0 length causes error
+            y, _ = librosa.effects.trim(y) # trim, top_db=default(60)
+        # make it unified length to conf.samples
+        if len(y) > sr*5: # long enough
+            y = y[0:sr*5]
+        else: # pad blank
+            padding = sr*5 - len(y)    # add padding at both ends
+            offset = padding // 2
+            y = np.pad(y, (offset, sr*5 - len(y) - offset), 'constant')
+        return y
+
 
     def gen_spectrogram(self, filenames):
         audio_path = '/home/tianxiangchen1/cssvp/Development/16k/'
         x_data = []
         for filename in filenames:
-            Sxx = []
-            wav, fs = librosa.load(audio_path + filename, sr=None)
-            # print(wav.shape, filename)
-            if len(wav.shape) > 1:
-                wav = wav[:,0]
-            if wav.shape[0] < fs*5:
-                pad_with = fs*5 - wav.shape[0]
-                wav = np.pad(wav, (0, pad_with), 'constant', constant_values=(0))
-            elif wav.shape[0] > fs*5:
-                wav = wav[0:fs*5]
-            #for i in range(0, wav.shape[0]-15360, 15360):
-            #    frame = wav[i:i+15360]
-            #    S = logfbank(frame, fs, winlen=0.025, winstep=0.01, nfft=2048, nfilt=64)
-            #    Sxx.append(S)
-            Sxx = vggish_input.wavfile_to_examples(audio_path+filename)
+            # Sxx = []
+            fn = audio_path + filename
+            wav = self.read_audio(fn)
+            Sxx = vggish_input.waveform_to_examples(wav, 16000)
             Sxx = np.vstack(Sxx)
             x_data.append(Sxx.reshape(1, Sxx.shape[0], Sxx.shape[1], 1))
             
         return np.vstack(x_data)
+
+#     def gen_spectrogram(self, filenames):
+#         audio_path = '/home/tianxiangchen1/cssvp/Development/16k/'
+#         x_data = []
+#         for filename in filenames:
+#             Sxx = []
+#             '''
+#             wav, fs = librosa.load(audio_path + filename, sr=None)
+#             assert fs==16000, "wavfile: %s" % (filename)
+#             # print(wav.shape, filename)
+#             if len(wav.shape) > 1:
+#                 wav = wav[:,0]
+#             if wav.shape[0] < fs*5:
+#                 pad_with = fs*5 - wav.shape[0]
+#                 wav = np.pad(wav, (0, pad_with), 'constant', constant_values=(0))
+#             elif wav.shape[0] > fs*5:
+#                 wav = wav[0:fs*5]
+#             '''
+#             #for i in range(0, wav.shape[0]-15360, 15360):
+#             #    frame = wav[i:i+15360]
+#             #    S = logfbank(frame, fs, winlen=0.025, winstep=0.01, nfft=2048, nfilt=64)
+#             #    Sxx.append(S)
+#             Sxx = vggish_input.wavfile_to_examples(audio_path+filename)
+#             Sxx = np.vstack(Sxx)
+#             x_data.append(Sxx.reshape(1, Sxx.shape[0], Sxx.shape[1], 1))
+            
+#         return np.vstack(x_data)
 
     def load_embeddings(self, filenames):
         x_data = []

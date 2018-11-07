@@ -436,8 +436,8 @@ def base_model_9(image_shape, classes_num, classes_num_2, dropout_rate):
     cnn = Conv2D(256, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
     cnn = MaxPooling2D((2, 2), strides=(2, 2))(cnn)
 
-    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
-    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=True)(cnn)
+    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=True)(cnn)
     cnn = MaxPooling2D((2, 2), strides=(2, 2), name='last_cnn')(cnn)
 
     sound_model = Model(inputs=input_layer, outputs=cnn)
@@ -471,8 +471,8 @@ def base_model_9(image_shape, classes_num, classes_num_2, dropout_rate):
     b1 = BatchNormalization()(b1)
     b1 = Activation(activation='relu')(b1)
     b1 = Dropout(dropout_rate)(b1)
-    output_layer = Dense(classes_num, activation='softmax')(b1)
-    output_event = Dense(classes_num_2, activation='softmax')(b1)
+    output_layer = Dense(classes_num, activation='softmax')(dense_b)
+    output_event = Dense(classes_num_2, activation='softmax')(dense_b)
     model = Model(inputs=[sound_model.input, input_layer_2], outputs=[output_layer, output_event])
 
     return model, 'base_model_9'
@@ -492,10 +492,10 @@ def base_model_10(image_shape, classes_num, classes_num_2, dropout_rate):
     cnn = Conv2D(256, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
     cnn = MaxPooling2D((2, 2), strides=(2, 2), name='cnn_3')(cnn)
 
-    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
-    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=False)(cnn)
+    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=True)(cnn)
+    cnn = Conv2D(512, (3, 3), padding='same', activation='relu', trainable=True)(cnn)
     cnn = MaxPooling2D((2, 2), strides=(2, 2), name='last_cnn')(cnn)
-
+    #print (cnn._keras_shape)
     sound_model = Model(inputs=input_layer, outputs=cnn)
     sound_model.load_weights('VGGish/vggish_audioset_weights_without_fc2.h5')
     x_1 = sound_model.get_layer(name='cnn_1').output
@@ -524,19 +524,18 @@ def base_model_10(image_shape, classes_num, classes_num_2, dropout_rate):
     cnn_2 = MaxPooling2D((2, 2), strides=(2, 2), name='last_cnn_2')(cnn_2)
     
     adapter_4 = Conv2D(512, (1, 1), padding='same', activation='relu')(x_4)
-
+    
     merged_vectors = concatenate([cnn_2, adapter_4], axis=2)
     cnn_3 = Conv2D(512, (3, 3), padding='same')(merged_vectors)
-    #cnn_3 = BatchNormalization(axis=-1)(cnn_3)
+    cnn_3 = BatchNormalization(axis=-1)(cnn_3)
     cnn_3 = Activation('relu')(cnn_3)
     cnn_3 = Conv2D(512, (3, 3), padding='same')(cnn_3)
-    #cnn_3 = BatchNormalization(axis=-1)(cnn_3)
+    cnn_3 = BatchNormalization(axis=-1)(cnn_3)
     cnn_3 = Activation('relu')(cnn_3)
-    cnn_3 = MaxPooling2D((1, 2), strides=(2, 2), name='last_cnn_3')(cnn_3)
-
-
-    #model = Model(inputs=[sound_model.input, input_layer_2], outputs=cnn_3)
-    res_cnn_3 = Reshape((15*4,512))(cnn_3)
+    cnn_3 = MaxPooling2D((1, 2), strides=(1, 1), name='last_cnn_3')(cnn_3)
+    #print(cnn_3._keras_shape)
+    model = Model(inputs=[sound_model.input, input_layer_2], outputs=cnn_3)
+    res_cnn_3 = Reshape((30*4,512))(cnn_2)
     res_cnn_2 = Reshape((30*4,512))(x_4)
 
     cla = Dense(256, activation='linear')(res_cnn_3)
